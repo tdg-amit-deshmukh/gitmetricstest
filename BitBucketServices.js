@@ -229,7 +229,9 @@ const getPullRequestComments = async (res, token, requestBody, gitMetricData, pr
                 let allComments = ""
                 data.values.forEach(activity => {
                     if (activity.action === "COMMENTED") {
-                        let prComment = "ID: " + activity.id + "; user email: " + activity.user.displayName + "; Comment: " + activity.text;
+                        console.log("activity ------------")
+                        console.log(activity)
+                        let prComment = "ID: " + activity.id + "; Comment By user: " + activity.user.displayName + "; Comment: " + activity.comment.text;
                         allComments = allComments + " ==== " + prComment;
                     }
                 })
@@ -501,9 +503,9 @@ const getAllOpenPullRequestsForDev = async (res, token, requestBody, gitMetricDa
                     gitMetricData.allOpenPrs = allOpenPrsInDate.filteredResponse;
                     gitMetricData.branches.push(...allOpenPrsInDate.allBranches)
  
-                    let branchIndex = 0;
-                    let start = 0;
-                    getAllCommitsForReposForDev(res, token, requestBody, gitMetricData, start, branchIndex);
+                    
+                    getAllBranches(res, token, requestBody, gitMetricData)
+                    // getAllCommitsForReposForDev(res, token, requestBody, gitMetricData, start, branchIndex);
                     // let indexOfCommits = 0;
                     // getAllCommitsDetails(res, token, requestBody, gitMetricData, indexOfCommits);
                 }
@@ -526,10 +528,40 @@ const getAllOpenPullRequestsForDev = async (res, token, requestBody, gitMetricDa
     // }
 }
  
+const getAllBranches = (res, token, requestBody, gitMetricData) => {
+    let linkForBranches = requestBody.url + "/rest/api/latest/projects/" + requestBody.projectKey + "/repos/" + requestBody.repositorySlug + "/branches";
+    const requestOptions = {
+        method: 'GET',
+        headers: { "Authorization": token, 'Content-Type':'application/json' },
+        redirect: 'follow'
+    }
+    console.log("linkForBranches---------------------------------")
+    console.log(linkForBranches)
+    fetch(linkForBranches, requestOptions)
+            .then((response)=> {
+                // console.log("response")
+                // console.log(response)
+                if(response.ok){
+                    return response.json();
+                }
+                else{
+                    throw new Error('Something went wrong!');
+                }
+            })
+            .then((data) => {
+                console.log("data for all branches")
+                // console.log(data.values)
+                gitMetricData.branches = data.values;
+                let branchIndex = 0;
+                let start = 0;
+                getAllCommitsForReposForDev(res, token, requestBody, gitMetricData, start, branchIndex);
+            })
+}
+ 
 const getAllCommitsForReposForDev = async (res, token, requestBody, gitMetricData, start, branchIndex) => {
     console.log("22222222gitMetricData")
-    console.log(gitMetricData.branches)
-    let linkForCommit = requestBody.url + "/rest/api/latest/projects/" + requestBody.projectKey + "/repos/" + requestBody.repositorySlug + "/commits?until=" + gitMetricData.branches[branchIndex] + "&start=" + start + "&limit=100";
+    // console.log(gitMetricData.branches)
+    let linkForCommit = requestBody.url + "/rest/api/latest/projects/" + requestBody.projectKey + "/repos/" + requestBody.repositorySlug + "/commits?until=" + gitMetricData.branches[branchIndex]["id"] + "&start=" + start + "&limit=100";
     //const commitResponse = await ApiCallHelper.getApiCall(linkForCommit, token);
     const requestOptions = {
         method: 'GET',
@@ -540,8 +572,8 @@ const getAllCommitsForReposForDev = async (res, token, requestBody, gitMetricDat
     console.log(linkForCommit)
     fetch(linkForCommit, requestOptions)
             .then((response)=> {
-                //console.log("response")
-                //console.log(response)
+                // console.log("response")
+                // console.log(response)
                 if(response.ok){
                     return response.json();
                 }
@@ -549,6 +581,8 @@ const getAllCommitsForReposForDev = async (res, token, requestBody, gitMetricDat
                     throw new Error('Something went wrong!');
                 }
             })
+//https://git.gartner.com/rest/api/latest/projects/EC/repos/digital-workspace-app/commits?until=feature/changes-for-initiative-page&start=100&limit=100
+//https://git.gartner.com/rest/api/latest/projects/EC/repos/digital-workspace-app/commits?until=feature/my-activity-api&start=0&limit=100
             .then((data)=> {
                 console.log("data ==============");
                 console.log("data ---------------");
@@ -606,12 +640,19 @@ const getAllCommitsForReposForDev = async (res, token, requestBody, gitMetricDat
  
 const startFunction = async () => {
     let requestObject = {
-        "platform": "BIT repo=spark-data-import",
-        "developer": "pkumbhar",
-        "username": "pkumbhar",
+        "platform": "BIT repo=digital-workspace-app",
+        "developer": "ask",
+        "username": "ask",
         "passkey": "",
         "startEndDate": "2024-11-01 To 2024-12-30"
       }
+    // let requestObject = {
+    //     "platform": "BIT repo=spark-data-import",
+    //     "developer": "pkumbhar",
+    //     "username": "pkumbhar",
+    //     "passkey": "",
+    //     "startEndDate": "2024-11-01 To 2024-12-30"
+    //   }
     // let allRepos = await getAllRepos("https://api.bitbucket.org/2.0", "tdgAmitDeshmukh", "ATBB8B2eTjvghCm8m69rBaB7TRu7D552B79E");
     let allRepos = await getGitMetricsByDev(responseCheck, requestObject);
     // console.log("allRepos ==================")
@@ -625,7 +666,11 @@ const responseCheck = (gitMetrics, totalApiCalls) => {
  
 startFunction();
  
- 
+/* URL: https://git.gartner.com/projects/EC/repos/digital-workspace-app/browse
+Project Key: digital-workspace-app
+Repo Key: digital-workspace-app
+username: ask
+ */
 // module.exports = {
 //     getAllRepos,
 //     getGitMetrics,
