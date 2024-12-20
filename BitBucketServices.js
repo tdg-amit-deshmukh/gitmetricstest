@@ -284,7 +284,8 @@ const getGitMetricsByDev = async (res, requestBodyToFormat) => {
         allDeclinedPrs: [],
         allOpenPrs: [],
         numberOfApiCalls: 0,
-        branches: []
+        branches: [],
+        prIds: []
     }
     // requestBody.repository = dataFormatter.getBitRepoFromAllRepoData(allRepos, requestBody.repositorySlug, "slug");
     // //http://{baseurl}/rest/api/latest/projects/{projectKey}/repos/{repositorySlug}/commits
@@ -393,6 +394,7 @@ const getAllMergedPullRequestsForDev = async (res, token, requestBody, gitMetric
                     let allMergedPrsInDate = DateHelper.filterResponseOnDateAndDev(gitMetricData.allMergedPrs, "createdDate", requestBody.startDate, requestBody.endDate, requestBody.developer);
                     gitMetricData.allMergedPrs = allMergedPrsInDate.filteredResponse;
                     gitMetricData.branches.push(...allMergedPrsInDate.allBranches)
+                    gitMetricData.prIds.push(...allMergedPrsInDate.pullReqIds);
                     let prStart = 0;
                     getAllDeclinedPullRequestsForDev(res, token, requestBody, gitMetricData, prStart);
                 }
@@ -447,6 +449,7 @@ const getAllDeclinedPullRequestsForDev = async (res, token, requestBody, gitMetr
                     let allDeclinedPrsInDate = DateHelper.filterResponseOnDateAndDev(gitMetricData.allDeclinedPrs, "createdDate", requestBody.startDate, requestBody.endDate, requestBody.developer);
                     gitMetricData.allDeclinedPrs = allDeclinedPrsInDate.filteredResponse;
                     gitMetricData.branches.push(...allDeclinedPrsInDate.allBranches)
+                    gitMetricData.prIds.push(...allDeclinedPrsInDate.pullReqIds);
                     let prStart = 0;
                     getAllOpenPullRequestsForDev(res, token, requestBody, gitMetricData, prStart);
                 }
@@ -502,9 +505,12 @@ const getAllOpenPullRequestsForDev = async (res, token, requestBody, gitMetricDa
                     let allOpenPrsInDate = DateHelper.filterResponseOnDateAndDev(gitMetricData.allOpenPrs, "createdDate", requestBody.startDate, requestBody.endDate, requestBody.developer);
                     gitMetricData.allOpenPrs = allOpenPrsInDate.filteredResponse;
                     gitMetricData.branches.push(...allOpenPrsInDate.allBranches)
- 
+                    gitMetricData.prIds.push(...allOpenPrsInDate.pullReqIds);
                     
-                    getAllBranches(res, token, requestBody, gitMetricData)
+ 
+                    let prIndex = 0;
+                    getAllPrDetails(res, token, requestBody, gitMetricData, prIndex)
+                    //getAllBranches(res, token, requestBody, gitMetricData)
                     // getAllCommitsForReposForDev(res, token, requestBody, gitMetricData, start, branchIndex);
                     // let indexOfCommits = 0;
                     // getAllCommitsDetails(res, token, requestBody, gitMetricData, indexOfCommits);
@@ -528,8 +534,59 @@ const getAllOpenPullRequestsForDev = async (res, token, requestBody, gitMetricDa
     // }
 }
  
+const getAllPrDetails = (res, token, requestBody, gitMetricData, prIndex) => {
+    let prDetailsLink = requestBody.url + "/rest/api/latest/projects/" + requestBody.projectKey + "/repos/" + requestBody.repositorySlug + "/pull-requests/" + gitMetricData.prIds[prIndex] + "/commits";
+    console.log("prDetailsLink +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++");
+    console.log(prDetailsLink);
+    const requestOptions = {
+        method: 'GET',
+        headers: { "Authorization": token, 'Content-Type':'application/json' },
+        redirect: 'follow'
+    }
+ 
+    fetch(prDetailsLink, requestOptions)
+    .then((response)=> {
+        //console.log("response")
+        //console.log(response)
+        if(response.ok){
+            return response.json();
+        }
+        else{
+            throw new Error('Something went wrong!');
+        }
+    }).then(data => {
+ 
+        let allCommitsToPush = data.values.map(commit => {
+            if (new Date(commit.authorTimestamp) > new Date(requestBody.startDate) && new Date(commit.authorTimestamp) < new Date(requestBody.endDate)) {
+                commit.hash = commit.id;
+                return commit;
+            }
+        })
+        console.log("data -------------------------------------------------------------")
+        //console.log(allCommitsToPush);
+        gitMetricData.allCommitsData.push(...allCommitsToPush);
+        prIndex++;
+        if (gitMetricData.prIds[prIndex]) {
+            getAllPrDetails(res, token, requestBody, gitMetricData, prIndex)
+        } else {
+            //gitMetricData.allCommitsData = DateHelper.filterCommitsOnDateAndAuthor(gitMetricData.allCommitsData, requestBody.startDate, requestBody.endDate, requestBody.developer);
+            console.log("gitMetricData.allCommitsData");
+            console.log(gitMetricData.allCommitsData);
+            
+            let indexOfCommits = 0;
+            getAllCommitsDetails(res, token, requestBody, gitMetricData, indexOfCommits);
+        }
+ 
+    })
+ 
+ 
+    // 'http://{baseurl}/rest/api/latest/projects/{projectKey}/repos/{repositorySlug}/pull-requests/{pullRequestId}/commits'
+ 
+}
+ 
 const getAllBranches = (res, token, requestBody, gitMetricData) => {
     let linkForBranches = requestBody.url + "/rest/api/latest/projects/" + requestBody.projectKey + "/repos/" + requestBody.repositorySlug + "/branches";
+    //let linkForBranches = requestBody.url + "/rest/api/latest/projects/" + requestBody.projectKey + "/repos/" + requestBody.repositorySlug + "/branches";
     const requestOptions = {
         method: 'GET',
         headers: { "Authorization": token, 'Content-Type':'application/json' },
@@ -670,9 +727,10 @@ startFunction();
 Project Key: digital-workspace-app
 Repo Key: digital-workspace-app
 username: ask
- */
+*/
 // module.exports = {
 //     getAllRepos,
 //     getGitMetrics,
 //     getGitMetricsByDev
 // }
+ 
