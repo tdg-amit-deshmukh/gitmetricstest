@@ -508,8 +508,12 @@ const getAllOpenPullRequestsForDev = async (res, token, requestBody, gitMetricDa
                     gitMetricData.prIds.push(...allOpenPrsInDate.pullReqIds);
                     
  
-                    let prIndex = 0;
-                    getAllPrDetails(res, token, requestBody, gitMetricData, prIndex)
+                    if (gitMetricData.prIds.length > 0) {
+                        let prIndex = 0;
+                        getAllPrDetails(res, token, requestBody, gitMetricData, prIndex)
+                    } else {
+                        getAllBranches(res, token, requestBody, gitMetricData)  
+                    }
                     //getAllBranches(res, token, requestBody, gitMetricData)
                     // getAllCommitsForReposForDev(res, token, requestBody, gitMetricData, start, branchIndex);
                     // let indexOfCommits = 0;
