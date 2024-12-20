@@ -207,7 +207,7 @@ const getAuthorName = (dataObject, platform, objectOf) => {
         console.log("dataObject.author---------------------")
         console.log(dataObject.author)
         if (objectOf === "commit") {
-            authorName = dataObject.author.toLowerCase();
+            authorName = dataObject.author.name.toLowerCase();
         } else {
             authorName = dataObject.author.toLowerCase();
         }
